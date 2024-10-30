@@ -1,5 +1,11 @@
 package hyperliquid
 
+import (
+	"encoding/json"
+	"io"
+	"net/http"
+)
+
 // AllMidsResponse ...
 type AllMidsResponse map[string]string
 
@@ -26,11 +32,35 @@ type OpenOrder struct {
 // requestBody:
 // type: "openOrders"
 // user: Address in 42-character hexadecimal format
-func (c *Client) GetOpenOrders() []OpenOrder {
+func (c *Client) GetOpenOrders() ([]OpenOrder, error) {
 	var (
 		response []OpenOrder
 	)
-	return response
+	endpoint := ""
+	rq, err := http.NewRequest(
+		http.MethodPost,
+		endpoint,
+		nil,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.HTTPClient.Do(rq)
+
+	switch resp.StatusCode {
+	case http.StatusOK:
+		respBody, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+		if err := json.Unmarshal(respBody, &response); err != nil {
+			return nil, err
+		}
+	}
+
+	return response, nil
 }
 
 // OrderFills return user order fills
