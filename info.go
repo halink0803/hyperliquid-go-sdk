@@ -1,7 +1,9 @@
 package hyperliquid
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 )
@@ -25,23 +27,32 @@ type OpenOrder struct {
 	OID       uint64 `json:"oid"`
 	Side      string `json:"side"`
 	Size      string `json:"sz"`
-	Timestamp string `json:"timestamp"`
+	Timestamp uint64 `json:"timestamp"`
 }
 
 // GetOpenOrders - return user open order
 // requestBody:
 // type: "openOrders"
 // user: Address in 42-character hexadecimal format
-func (c *Client) GetOpenOrders() ([]OpenOrder, error) {
+func (c *Client) GetOpenOrders(user string) ([]OpenOrder, error) {
 	var (
 		response []OpenOrder
 	)
-	endpoint := ""
+	endpoint := "https://api.hyperliquid.xyz/info"
+
+	rqBody := []byte(fmt.Sprintf(`
+		"type": "openOrders",
+		"user": %s
+	`, user))
+
+	body := bytes.NewBuffer(rqBody)
+
 	rq, err := http.NewRequest(
 		http.MethodPost,
 		endpoint,
-		nil,
+		body,
 	)
+
 	if err != nil {
 		return nil, err
 	}
@@ -58,6 +69,13 @@ func (c *Client) GetOpenOrders() ([]OpenOrder, error) {
 		if err := json.Unmarshal(respBody, &response); err != nil {
 			return nil, err
 		}
+	default:
+		respBody, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+		return nil, fmt.Errorf("%s", respBody)
 	}
 
 	return response, nil
